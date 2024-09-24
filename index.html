@@ -134,6 +134,47 @@
             z-index: 1000;
             pointer-events: none;
         }
+
+        .theme-selector {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+            background-color: rgba(26, 26, 58, 0.8);
+            border-radius: 5px;
+            padding: 15px;
+            border: 1px solid #00ffff;
+        }
+        
+        .theme-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .theme-option:hover {
+            transform: scale(1.1);
+        }
+        
+        .theme-option.selected::after {
+            content: '✓';
+            color: white;
+            font-size: 24px;
+            text-shadow: 0 0 3px black;
+        }
+        
+        .color-preview {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin: 0 -2px;
+        }
         
         @media (min-width: 768px) {
             .main-container {
@@ -167,9 +208,11 @@
                 <span id="speedValue">Speed: 50</span>
             </div>
             <div id="entityList" class="entity-list"></div>
+            <div class="theme-selector" id="themeSelector"></div>
         </div>
     </div>
     <div id="tooltip" style="display: none;"></div>
+
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -200,6 +243,19 @@
             offscreenCanvas.width = canvas.width;
             offscreenCanvas.height = canvas.height;
         }
+
+        const colorThemes = [
+    { name: 'Default', primary: '#00ffff', secondary: '#e94560', tertiary: '#c5ee4f', background: '#0c0c1d' },
+    { name: 'Neon Nights', primary: '#ff00ff', secondary: '#00ff00', tertiary: '#ffff00', background: '#000000' },
+    { name: 'Pastel Dream', primary: '#ffb3ba', secondary: '#bae1ff', tertiary: '#baffc9', background: '#fff5ba' },
+    { name: 'Cyber Punk', primary: '#f72585', secondary: '#4361ee', tertiary: '#4cc9f0', background: '#3a0ca3' },
+    { name: 'Forest', primary: '#2d6a4f', secondary: '#95d5b2', tertiary: '#d8f3dc', background: '#1b4332' },
+    { name: 'Sunset', primary: '#ff7b00', secondary: '#ffb700', tertiary: '#ff006e', background: '#8900f2' },
+    { name: 'Ocean', primary: '#00b4d8', secondary: '#0077b6', tertiary: '#caf0f8', background: '#03045e' },
+    { name: 'Monochrome', primary: '#ffffff', secondary: '#cccccc', tertiary: '#666666', background: '#000000' },
+];
+
+        let currentTheme = colorThemes[0];
     
     
         class Entity {
@@ -366,7 +422,65 @@
                 return false;
             }
         }
-    
+        
+        function initThemeSelector() {
+            const themeSelector = document.getElementById('themeSelector');
+            themeSelector.innerHTML = ''; // Clear existing content
+            colorThemes.forEach((theme, index) => {
+                const themeOption = document.createElement('div');
+                themeOption.className = 'theme-option';
+                themeOption.style.backgroundColor = theme.background;
+                themeOption.innerHTML = `
+                    <div class="color-preview" style="background-color: ${theme.primary}"></div>
+                    <div class="color-preview" style="background-color: ${theme.secondary}"></div>
+                    <div class="color-preview" style="background-color: ${theme.tertiary}"></div>
+                `;
+                themeOption.addEventListener('click', () => selectTheme(index));
+                themeSelector.appendChild(themeOption);
+            });
+            updateSelectedTheme();
+        }
+        
+        function selectTheme(index) {
+            currentTheme = colorThemes[index];
+            updateSelectedTheme();
+            updateGameColors();
+        }
+        
+        function updateSelectedTheme() {
+            const themeOptions = document.querySelectorAll('.theme-option');
+            themeOptions.forEach((option, index) => {
+                option.classList.toggle('selected', colorThemes[index] === currentTheme);
+            });
+        }
+        
+        function updateGameColors() {
+            document.body.style.backgroundColor = currentTheme.background;
+            document.body.style.color = currentTheme.primary;
+            
+            entities.forEach(entity => {
+                entity.color = calculateEntityColor(entity);
+            });
+            
+            drawGrid();
+        }
+        
+        function calculateEntityColor(entity) {
+            if (entity instanceof DeadMatter) {
+                return chroma.mix(currentTheme.secondary, currentTheme.background, entity.decompositionStage / 5).hex();
+            }
+            
+            const energyHue = entity.energy * 120;
+            const aggressionSaturation = entity.dna.aggression * 100;
+            const cooperationLightness = 50 + entity.dna.cooperation * 50;
+            
+            return chroma.mix(
+                chroma.hsl(energyHue, aggressionSaturation, cooperationLightness),
+                currentTheme.primary,
+                0.5
+            ).hex();
+        }
+
         function resizeCanvas() {
             const container = canvas.parentElement;
             canvas.width = container.clientWidth;
@@ -540,10 +654,10 @@
             ).join('');
         }
 
-    function drawGrid() {
+        function drawGrid() {
         offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
         entities.forEach(entity => {
-            offscreenCtx.fillStyle = entity.color;
+            offscreenCtx.fillStyle = calculateEntityColor(entity);
             offscreenCtx.beginPath();
             if (entity instanceof ComplexEntity) {
                 offscreenCtx.rect(
@@ -750,7 +864,7 @@
     canvas.addEventListener('mouseleave', () => {
         isPanning = false;
     });
-
+    document.addEventListener('DOMContentLoaded', initThemeSelector);
    
     window.addEventListener('resize', updateOffscreenCanvas);
     updateOffscreenCanvas();
@@ -758,6 +872,6 @@
     const populationHistory = [];
     const maxHistoryLength = 100;
 
-
+    initThemeSelector();
     initGrid();
 </script>
