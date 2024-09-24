@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game of Strife | Ty</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"></script>
+    <style>
+        body {
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #0c0c1d;
+            color: #00ffff;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            height: 100vh;
+        }
+        .game-container {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 5px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+        .overlay {
+            position: absolute;
+            padding: 8px;
+            background-color: rgba(12, 12, 29, 0.8);
+            border-radius: 5px;
+            font-size: 0.9rem;
+            border: 1px solid #00ffff;
+        }
+        #statsOverlay {
+            bottom: 10px;
+            left: 10px;
+        }
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        button {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: #1a1a3a;
+            color: #00ffff;
+            border: 2px solid #00ffff;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        button:hover {
+            background-color: #00ffff;
+            color: #1a1a3a;
+        }
+        #speedControl {
+            flex-grow: 1;
+            -webkit-appearance: none;
+            background: #1a1a3a;
+            outline: none;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 1);
+        }
+        #speedControl::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00ffff;
+            cursor: pointer;
+            border: 4px solid #1a1a3a;
+            box-shadow: -407px 0 0 400px #00ffff;
+        }
+        .entity-list {
+            background-color: rgba(26, 26, 58, 0.8);
+            border-radius: 5px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #00ffff;
+        }
+        .entity-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .entity-list::-webkit-scrollbar-track {
+            background: #1a1a3a;
+        }
+        .entity-list::-webkit-scrollbar-thumb {
+            background-color: #00ffff;
+            border-radius: 4px;
+        }
+        .entity-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 3px;
+            background-color: rgba(26, 26, 58, 0.8);
+            border-left: 3px solid #00ffff;
+        }
+        #tooltip {
+            position: absolute;
+            background-color: rgba(12, 12, 29, 0.9);
+            color: #00ffff;
+            border: 1px solid #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        
+        @media (min-width: 768px) {
+            .main-container {
+                flex-direction: row;
+            }
+            .game-container {
+                flex: 1;
+            }
+            .side-panel {
+                width: 250px;
+                margin-left: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="game-container">
+            <canvas id="gameCanvas"></canvas>
+            <div id="statsOverlay" class="overlay">
+                Gen: <span id="generationCount">0</span> | 
+                Pop: <span id="populationCount">0</span> | 
+                Avg E: <span id="avgEnergy">0.00</span>
+            </div>
+        </div>
+        <div class="side-panel">
+            <div class="controls">
+                <button id="startStopBtn">Start</button>
+                <button id="resetBtn">Reset</button>
+                <input type="range" id="speedControl" min="1" max="100" value="50">
+                <span id="speedValue">Speed: 50</span>
+            </div>
+            <div id="entityList" class="entity-list"></div>
+        </div>
+    </div>
+    <div id="tooltip" style="display: none;"></div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startStopBtn = document.getElementById('startStopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const speedControl = document.getElementById('speedControl');
+        const speedValue = document.getElementById('speedValue');
+        const generationCount = document.getElementById('generationCount');
+        const populationCount = document.getElementById('populationCount');
+        const avgEnergy = document.getElementById('avgEnergy');
+        const entityList = document.getElementById('entityList');
+    
+        let CELL_SIZE = 8;
+        let ROWS, COLS;
+        let grid = [];
+        let entities = new Map();
+        let isRunning = false;
+        let generation = 0;
+        let animationId;
+    
+        const colorScale = chroma.scale(['#16213e', '#e94560', '#c5ee4f']).mode('lab');
+        
+        const offscreenCanvas = document.createElement('canvas');
+        const offscreenCtx = offscreenCanvas.getContext('2d');
+    
+        function updateOffscreenCanvas() {
+            offscreenCanvas.width = canvas.width;
+            offscreenCanvas.height = canvas.height;
+        }
+    
+    
+        class Entity {
+            constructor(x, y, dna = null) {
+                this.x = x;
+                this.y = y;
+                this.dna = dna || {
+                    energyEfficiency: Math.random(),
+                    reproductionThreshold: Math.random() * 0.5 + 0.5,
+                    mutationRate: Math.random() * 0.1,
+                    aggression: Math.random(),
+                    cooperation: Math.random()
+                };
+                this.energy = 1;
+                this.age = 0;
+                this.color = this.calculateColor();
+                this.name = Entity.generateName();
+                this.lastInteraction = null;
+            }
+    
+            static generateName() {
+                const prefixes = ['Cellu', 'Vita', 'Morpho', 'Geno', 'Muta', 'Synth', 'Neon', 'Retro'];
+                const suffixes = ['lius', 'trix', 'phylum', 'genus', 'species', 'wave', 'pulse', 'glow'];
+                return `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
+            }
+    
+            calculateColor() {
+                const energyHue = this.energy * 120;
+                const aggressionSaturation = this.dna.aggression * 100;
+                const cooperationLightness = 50 + this.dna.cooperation * 50;
+                return chroma.hsl(energyHue, aggressionSaturation, cooperationLightness).hex();
+            }
+    
+            mutate() {
+                if (Math.random() < this.dna.mutationRate) {
+                    const keys = Object.keys(this.dna);
+                    const keyToMutate = keys[Math.floor(Math.random() * keys.length)];
+                    this.dna[keyToMutate] += (Math.random() - 0.5) * 0.1;
+                    this.dna[keyToMutate] = Math.max(0, Math.min(1, this.dna[keyToMutate]));
+                }
+            }
+    
+            update(neighbors) {
+            this.age++;
+            this.energy -= 0.1 * (1 - this.dna.energyEfficiency);
+            this.lastInteraction = null;
+            
+            if (this.energy <= 0) return false;
+
+            const cooperativeNeighbors = neighbors.filter(n => n instanceof Entity && n.dna && n.dna.cooperation > 0.5);
+            if (cooperativeNeighbors.length > 0) {
+                const sharedEnergy = cooperativeNeighbors.reduce((sum, n) => sum + n.energy, 0) / (cooperativeNeighbors.length + 1);
+                this.energy = (this.energy + sharedEnergy) / 2;
+                cooperativeNeighbors.forEach(n => {
+                    n.energy = sharedEnergy;
+                    n.lastInteraction = 'cooperate';
+                });
+                this.lastInteraction = 'cooperate';
+            }
+
+            const aggressiveNeighbors = neighbors.filter(n => n instanceof Entity && n.dna && n.dna.aggression > 0.5);
+            aggressiveNeighbors.forEach(n => {
+                if (Math.random() < n.dna.aggression - this.dna.aggression) {
+                    this.energy -= 0.2;
+                    n.energy += 0.1;
+                    this.lastInteraction = 'attacked';
+                    n.lastInteraction = 'attack';
+                }
+            });
+
+            if (this.energy > this.dna.reproductionThreshold && this.age > 10) {
+                this.energy /= 2;
+                this.lastInteraction = 'reproduce';
+                return true;
+            }
+
+            this.mutate();
+            this.color = this.calculateColor();
+            return null;
+        }
+    
+            canCombine() {
+                return this.energy > 1.5 && this.age > 20;
+            }
+        }
+    
+        class ComplexEntity {
+            constructor(entities) {
+                this.subEntities = entities;
+                this.x = Math.round(entities.reduce((sum, e) => sum + e.x, 0) / entities.length);
+                this.y = Math.round(entities.reduce((sum, e) => sum + e.y, 0) / entities.length);
+                this.energy = entities.reduce((sum, e) => sum + e.energy, 0);
+                this.age = Math.max(...entities.map(e => e.age));
+                this.dna = this.combineDNA(entities);
+                this.color = this.calculateColor();
+                this.name = this.generateName();
+                this.lastInteraction = null;
+                this.size = Math.min(entities.length, 3);
+            }
+    
+            combineDNA(entities) {
+                const combinedDNA = {};
+                for (let key in entities[0].dna) {
+                    combinedDNA[key] = entities.reduce((sum, e) => sum + e.dna[key], 0) / entities.length;
+                }
+                return combinedDNA;
+            }
+    
+            calculateColor() {
+                const energyHue = Math.min(this.energy * 30, 360);
+                const aggressionSaturation = this.dna.aggression * 100;
+                const cooperationLightness = 50 + this.dna.cooperation * 50;
+                return chroma.hsl(energyHue, aggressionSaturation, cooperationLightness).hex();
+            }
+    
+            generateName() {
+                const prefixes = ['Mega', 'Ultra', 'Hyper', 'Super', 'Omni'];
+                const baseName = Entity.generateName();
+                return `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${baseName}`;
+            }
+    
+            update(neighbors) {
+                this.age++;
+                this.energy -= 0.1 * this.size * (1 - this.dna.energyEfficiency);
+                this.lastInteraction = null;
+                
+                if (this.energy <= 0) return false;
+    
+                if (this.energy > this.dna.reproductionThreshold * this.size && this.age > 30) {
+                    this.energy /= 2;
+                    this.lastInteraction = 'reproduce';
+                    return true;
+                }
+    
+                this.color = this.calculateColor();
+                return null;
+            }
+    
+            canSplit() {
+                return this.energy < 1 * this.size || this.age > 100;
+            }
+        }
+    
+        class DeadMatter {
+            constructor(x, y, energy) {
+                this.x = x;
+                this.y = y;
+                this.energy = energy;
+                this.decompositionStage = 0;
+                this.color = this.calculateColor();
+            }
+    
+            calculateColor() {
+                const decompositionProgress = this.decompositionStage / 5;
+                return chroma.mix('#8B4513', '#000000', decompositionProgress).hex();
+            }
+    
+            update() {
+                this.decompositionStage++;
+                this.color = this.calculateColor();
+                if (this.decompositionStage >= 5) {
+                    return true; // Fully decomposed
+                }
+                return false;
+            }
+        }
+    
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            ROWS = Math.floor(canvas.height / CELL_SIZE);
+            COLS = Math.floor(canvas.width / CELL_SIZE);
+            initGrid();
+        }
+        function initGrid() {
+            grid = Array(ROWS).fill().map(() => Array(COLS).fill(null));
+            entities.clear();
+            for (let i = 0; i < ROWS; i++) {
+                for (let j = 0; j < COLS; j++) {
+                    if (Math.random() > 0.8) {
+                        const entity = new Entity(i, j);
+                        grid[i][j] = entity;
+                        entities.set(`${i}-${j}`, entity);
+                    }
+                }
+            }
+            generation = 0;
+            updateStats();
+            drawGrid();
+            updateEntityList();
+        }
+        function updateGrid() {
+            const newGrid = Array(ROWS).fill().map(() => Array(COLS).fill(null));
+            const newEntities = new Map();
+    
+            const potentialCombinations = findPotentialCombinations();
+    
+            entities.forEach((entity, key) => {
+                if (potentialCombinations.has(key)) return;
+    
+                if (entity instanceof DeadMatter) {
+                    const fullyDecomposed = entity.update();
+                    if (fullyDecomposed) {
+                        // Convert dead matter to energy for nearby entities
+                        const neighbors = getNeighbors(entity.x, entity.y);
+                        if (neighbors.length > 0) {
+                            const energyPerNeighbor = entity.energy / neighbors.length;
+                            neighbors.forEach(neighbor => {
+                                neighbor.energy += energyPerNeighbor;
+                            });
+                        }
+                    } else {
+                        newGrid[entity.x][entity.y] = entity;
+                        newEntities.set(`${entity.x}-${entity.y}`, entity);
+                    }
+                    return;
+                }
+    
+                const neighbors = getNeighbors(entity.x, entity.y);
+                const updateResult = entity.update(neighbors);
+                
+                if (updateResult === false) {
+                    // Entity dies, create dead matter
+                    const deadMatter = new DeadMatter(entity.x, entity.y, entity.energy * 0.5);
+                    newGrid[entity.x][entity.y] = deadMatter;
+                    newEntities.set(`${entity.x}-${entity.y}`, deadMatter);
+                    return;
+                }
+    
+                if (entity instanceof ComplexEntity && entity.canSplit()) {
+                    entity.subEntities.forEach(subEntity => {
+                        const [newX, newY] = getEmptyNeighbor(entity.x, entity.y, newGrid) || [entity.x, entity.y];
+                        newGrid[newX][newY] = subEntity;
+                        newEntities.set(`${newX}-${newY}`, subEntity);
+                    });
+                } else {
+                    newGrid[entity.x][entity.y] = entity;
+                    newEntities.set(`${entity.x}-${entity.y}`, entity);
+    
+                    if (updateResult === true) {
+                        const emptyNeighbor = getEmptyNeighbor(entity.x, entity.y, newGrid);
+                        if (emptyNeighbor) {
+                            const [newX, newY] = emptyNeighbor;
+                            const childEntity = entity instanceof ComplexEntity 
+                                ? new ComplexEntity(entity.subEntities.map(e => new Entity(newX, newY, {...e.dna})))
+                                : new Entity(newX, newY, {...entity.dna});
+                            newGrid[newX][newY] = childEntity;
+                            newEntities.set(`${newX}-${newY}`, childEntity);
+                        }
+                    }
+                }
+            });
+    
+            potentialCombinations.forEach(combination => {
+                const complexEntity = new ComplexEntity(combination);
+                newGrid[complexEntity.x][complexEntity.y] = complexEntity;
+                newEntities.set(`${complexEntity.x}-${complexEntity.y}`, complexEntity);
+            });
+    
+            for (let i = 0; i < ROWS; i++) {
+                for (let j = 0; j < COLS; j++) {
+                    if (!newGrid[i][j] && Math.random() < 0.001) {
+                        const newEntity = new Entity(i, j);
+                        newGrid[i][j] = newEntity;
+                        newEntities.set(`${i}-${j}`, newEntity);
+                    }
+                }
+            }
+    
+            grid = newGrid;
+            entities = newEntities;
+            generation++;
+            updateStats();
+            updateEntityList();
+        }
+    
+        function findPotentialCombinations() {
+        const combinations = new Set();
+        entities.forEach((entity, key) => {
+            if (!(entity instanceof Entity) || entity instanceof ComplexEntity || !entity.canCombine()) return;
+
+            const neighbors = getNeighbors(entity.x, entity.y);
+            const combineNeighbors = neighbors.filter(n => n instanceof Entity && !(n instanceof ComplexEntity) && n.canCombine());
+            
+            if (combineNeighbors.length >= 2) {
+                combinations.add([entity, ...combineNeighbors]);
+            }
+        });
+        return combinations;
+    }
+    
+        function getNeighbors(x, y) {
+            const neighbors = [];
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) continue;
+                    const newX = (x + i + ROWS) % ROWS;
+                    const newY = (y + j + COLS) % COLS;
+                    if (grid[newX][newY]) neighbors.push(grid[newX][newY]);
+                }
+            }
+            return neighbors;
+        }
+    
+        function getEmptyNeighbor(x, y, grid) {
+            const emptyNeighbors = [];
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) continue;
+                    const newX = (x + i + ROWS) % ROWS;
+                    const newY = (y + j + COLS) % COLS;
+                    if (!grid[newX][newY]) emptyNeighbors.push([newX, newY]);
+                }
+            }
+            return emptyNeighbors[Math.floor(Math.random() * emptyNeighbors.length)];
+        }
+    
+        function updateStats() {
+            generationCount.textContent = generation;
+            populationCount.textContent = entities.size;
+            const totalEnergy = Array.from(entities.values()).reduce((sum, entity) => sum + entity.energy, 0);
+            avgEnergy.textContent = (totalEnergy / entities.size || 0).toFixed(2);
+        }
+
+        function updateEntityList() {
+            const entitiesSample = Array.from(entities.values()).slice(0, 5);
+            entityList.innerHTML = entitiesSample.map(entity => 
+                `<div class="entity-item" style="border-left: 3px solid ${entity.color}">
+                    <strong>${entity instanceof DeadMatter ? 'Dead Matter' : entity.name.split(' ')[0]}</strong><br>
+                    E: ${entity.energy.toFixed(2)}
+                    ${entity instanceof DeadMatter ? 
+                        `| D: ${entity.decompositionStage}/5` : 
+                        `| A: ${entity.age}<br>C: ${entity.dna.cooperation.toFixed(2)} | Ag: ${entity.dna.aggression.toFixed(2)}
+                        ${entity instanceof ComplexEntity ? `| S: ${entity.size}` : ''}`
+                    }
+                </div>`
+            ).join('');
+        }
+
+    function drawGrid() {
+        offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
+        entities.forEach(entity => {
+            offscreenCtx.fillStyle = entity.color;
+            offscreenCtx.beginPath();
+            if (entity instanceof ComplexEntity) {
+                offscreenCtx.rect(
+                    entity.y * CELL_SIZE,
+                    entity.x * CELL_SIZE,
+                    CELL_SIZE * entity.size,
+                    CELL_SIZE * entity.size
+                );
+            } else if (entity instanceof DeadMatter) {
+                offscreenCtx.rect(
+                    entity.y * CELL_SIZE,
+                    entity.x * CELL_SIZE,
+                    CELL_SIZE,
+                    CELL_SIZE
+                );
+            } else {
+                offscreenCtx.arc(
+                    entity.y * CELL_SIZE + CELL_SIZE / 2,
+                    entity.x * CELL_SIZE + CELL_SIZE / 2,
+                    CELL_SIZE / 2 - 1,
+                    0,
+                    2 * Math.PI
+                );
+            }
+            offscreenCtx.fill();
+
+            if (entity.lastInteraction && !(entity instanceof DeadMatter)) {
+                offscreenCtx.strokeStyle = entity.lastInteraction === 'cooperate' ? '#c5ee4f' :
+                                           entity.lastInteraction === 'attack' ? '#ff0000' :
+                                           entity.lastInteraction === 'attacked' ? '#ff8c00' :
+                                           entity.lastInteraction === 'reproduce' ? '#ffffff' : entity.color;
+                offscreenCtx.lineWidth = 2;
+                offscreenCtx.stroke();
+            }
+        });
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(offscreenCanvas, 0, 0);
+    }
+
+    function gameLoop(timestamp) {
+        if (!lastUpdateTime) lastUpdateTime = timestamp;
+        const elapsed = timestamp - lastUpdateTime;
+
+        if (elapsed > updateInterval) {
+            updateGrid();
+            drawGrid();
+            lastUpdateTime = timestamp;
+        }
+
+        if (isRunning) {
+            requestAnimationFrame(gameLoop);
+        }
+    }
+
+    let lastUpdateTime = 0;
+    let updateInterval = 50;
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    
+
+    startStopBtn.addEventListener('click', () => {
+        isRunning = !isRunning;
+        startStopBtn.textContent = isRunning ? 'Stop' : 'Start';
+        if (isRunning) {
+            lastUpdateTime = 0;
+            requestAnimationFrame(gameLoop);
+        }
+    });
+
+    resetBtn.addEventListener('click', initGrid);
+
+    speedControl.addEventListener('input', () => {
+        updateInterval = 100 - speedControl.value;
+        speedValue.textContent = `Speed: ${speedControl.value}`;
+    });
+
+    canvas.addEventListener('click', (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = Math.floor((event.clientY - rect.top) * (ROWS / rect.height));
+        const y = Math.floor((event.clientX - rect.left) * (COLS / rect.width));
+        
+        if (grid[x][y]) {
+            grid[x][y] = null;
+            entities.delete(`${x}-${y}`);
+        } else {
+            const newEntity = new Entity(x, y);
+            grid[x][y] = newEntity;
+            entities.set(`${x}-${y}`, newEntity);
+        }
+        updateStats();
+        drawGrid();
+        updateEntityList();
+    });
+
+    canvas.addEventListener('mousemove', (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = Math.floor((event.clientY - rect.top) * (ROWS / rect.height));
+        const y = Math.floor((event.clientX - rect.left) * (COLS / rect.width));
+        
+        const entity = grid[x] && grid[x][y];
+        if (entity) {
+            showTooltip(event.clientX, event.clientY, entity);
+        } else {
+            hideTooltip();
+        }
+    });
+    canvas.addEventListener('mouseout', hideTooltip);
+
+    function showTooltip(x, y, entity) {
+        const tooltip = document.getElementById('tooltip') || createTooltip();
+        tooltip.style.display = 'block';
+        tooltip.style.left = `${x + 10}px`;
+        tooltip.style.top = `${y + 10}px`;
+        if (entity instanceof DeadMatter) {
+            tooltip.innerHTML = `
+                <strong>Dead Matter</strong><br>
+                Energy: ${entity.energy.toFixed(2)}<br>
+                Decomposition Stage: ${entity.decompositionStage}/5
+            `;
+        } else {
+            tooltip.innerHTML = `
+                <strong>${entity.name}</strong><br>
+                Energy: ${entity.energy.toFixed(2)}<br>
+                Age: ${entity.age}<br>
+                Cooperation: ${entity.dna.cooperation.toFixed(2)}<br>
+                Aggression: ${entity.dna.aggression.toFixed(2)}<br>
+                ${entity instanceof ComplexEntity ? `Size: ${entity.size}` : ''}
+            `;
+        }
+    }
+
+    function hideTooltip() {
+        const tooltip = document.getElementById('tooltip');
+        if (tooltip) {
+            tooltip.style.display = 'none';
+        }
+    }
+
+    function createTooltip() {
+        const tooltip = document.createElement('div');
+        tooltip.id = 'tooltip';
+        tooltip.style.position = 'absolute';
+        tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        tooltip.style.color = 'white';
+        tooltip.style.padding = '5px';
+        tooltip.style.borderRadius = '5px';
+        tooltip.style.fontSize = '12px';
+        tooltip.style.zIndex = '1000';
+        document.body.appendChild(tooltip);
+        return tooltip;
+    }
+
+    let zoomLevel = 1;
+    const zoomSpeed = 0.1;
+
+    canvas.addEventListener('wheel', (event) => {
+        event.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+
+        const wheel = event.deltaY < 0 ? 1 : -1;
+        zoomLevel += wheel * zoomSpeed;
+        zoomLevel = Math.max(0.5, Math.min(zoomLevel, 3));
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.translate(mouseX, mouseY);
+        ctx.scale(zoomLevel, zoomLevel);
+        ctx.translate(-mouseX, -mouseY);
+
+        drawGrid();
+    });
+
+    let isPanning = false;
+    let startPanX, startPanY;
+
+    canvas.addEventListener('mousedown', (event) => {
+        isPanning = true;
+        startPanX = event.clientX - canvas.offsetLeft;
+        startPanY = event.clientY - canvas.offsetTop;
+    });
+
+    canvas.addEventListener('mousemove', (event) => {
+        if (!isPanning) return;
+
+        const panX = event.clientX - canvas.offsetLeft;
+        const panY = event.clientY - canvas.offsetTop;
+
+        ctx.translate((panX - startPanX) / zoomLevel, (panY - startPanY) / zoomLevel);
+        startPanX = panX;
+        startPanY = panY;
+
+        drawGrid();
+    });
+
+    canvas.addEventListener('mouseup', () => {
+        isPanning = false;
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+        isPanning = false;
+    });
+
+   
+    window.addEventListener('resize', updateOffscreenCanvas);
+    updateOffscreenCanvas();
+
+    const populationHistory = [];
+    const maxHistoryLength = 100;
+
+
+    initGrid();
+</script>
