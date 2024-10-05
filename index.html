@@ -5,10 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game of Strife | Ty</title>
     <link rel="icon" type="image/png" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sankofa+Display&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"></script>
     <style>
+        * {
+            font-family: "Sankofa Display", sans-serif !important;
+        }
         body {
-            font-family: 'Orbitron', sans-serif;
+            font-family: "Sankofa Display", sans-serif;
             margin: 0;
             padding: 0;
             background-color: #0c0c1d;
@@ -16,25 +22,25 @@
             display: flex;
             flex-direction: column;
             min-height: 100vh;
+            overflow: hidden;
         }
         .main-container {
             display: flex;
-            flex-direction: column;
-            padding: 20px;
-            box-sizing: border-box;
             height: 100vh;
+            width: 100vw;
+            transition: all 0.3s ease;
         }
         .game-container {
             position: relative;
             flex: 1;
-            width: 100%;
-            margin-bottom: 20px;
+          
         }
         #gameCanvas {
             position: absolute;
             top: 0;
-            left: 0;
-            width: 100%;
+            left: 0px;
+           
+            width: 100vw;
             height: 100%;
             border-radius: 5px;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
@@ -52,9 +58,41 @@
             left: 10px;
         }
         .side-panel {
+            width: 250px;
+            background-color: rgba(26, 26, 58, 0.9);
+            padding: 20px;
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
             gap: 15px;
+            transition: transform 0.3s ease, width 0.3s ease;
+            position: relative;
+        }
+        .side-panel.collapsed {
+            transform: translateX(100%);
+            width: 0;
+            padding: 0;
+        }
+        .toggle-panel {
+            position: absolute;
+            left: -30px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(26, 26, 58, 0.9);
+            color: #00ffff;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px 0 0 5px;
+            transition: transform 0.3s ease;
+            z-index: 10;
+        }
+        .toggle-panel:hover {
+            background-color: rgba(0, 255, 255, 0.2);
+        }
+        .toggle-panel.collapsed {
+            transform: translateY(-50%) rotate(180deg);
+            border-radius: 0 5px 5px 0;
         }
         .controls {
             display: flex;
@@ -62,7 +100,7 @@
             gap: 15px;
         }
         button {
-            font-family: 'Orbitron', sans-serif;
+            font-family: "Sankofa Display", sans-serif;
             font-size: 1rem;
             padding: 10px 15px;
             cursor: pointer;
@@ -142,13 +180,13 @@
             margin-top: 20px;
             background-color: rgba(26, 26, 58, 0.8);
             border-radius: 5px;
-            padding: 15px;
+            padding: 10px;
             border: 1px solid #00ffff;
         }
         
         .theme-option {
-            width: 40px;
-            height: 40px;
+            width: 30px;
+            height: 30px;
             border-radius: 5px;
             cursor: pointer;
             display: flex;
@@ -165,7 +203,7 @@
         .theme-option.selected::after {
             content: '✓';
             color: white;
-            font-size: 24px;
+            font-size: 20px;
             text-shadow: 0 0 3px black;
         }
         
@@ -201,18 +239,18 @@
             </div>
         </div>
         <div class="side-panel">
+            <button class="toggle-panel">◀</button>
             <div class="controls">
                 <button id="startStopBtn">Start</button>
                 <button id="resetBtn">Reset</button>
                 <input type="range" id="speedControl" min="1" max="100" value="50">
-                <span id="speedValue">Speed: 50</span>
+                <span id="speedValue">50</span>
             </div>
             <div id="entityList" class="entity-list"></div>
             <div class="theme-selector" id="themeSelector"></div>
         </div>
     </div>
     <div id="tooltip" style="display: none;"></div>
-
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -481,13 +519,48 @@
             ).hex();
         }
 
-        function resizeCanvas() {
+        function resizeCanvas(resetGrid = true) {
             const container = canvas.parentElement;
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
-            ROWS = Math.floor(canvas.height / CELL_SIZE);
-            COLS = Math.floor(canvas.width / CELL_SIZE);
-            initGrid();
+            const newWidth = container.clientWidth;
+            const newHeight = container.clientHeight;
+            const newRows = Math.floor(newHeight / CELL_SIZE);
+            const newCols = Math.floor(newWidth / CELL_SIZE);
+            
+            if (newWidth !== canvas.width || newHeight !== canvas.height) {
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+                
+                if (resetGrid || newRows !== ROWS || newCols !== COLS) {
+                    const oldGrid = grid;
+                    const oldEntities = entities;
+                    
+                    ROWS = newRows;
+                    COLS = newCols;
+                    grid = Array(ROWS).fill().map(() => Array(COLS).fill(null));
+                    entities = new Map();
+                    
+                    // Preserve existing entities
+                    oldEntities.forEach((entity, key) => {
+                        const [x, y] = key.split('-').map(Number);
+                        if (x < ROWS && y < COLS) {
+                            grid[x][y] = entity;
+                            entities.set(`${x}-${y}`, entity);
+                        }
+                    });
+                    
+                    if (resetGrid) {
+                        initGrid();
+                    }
+                }
+                
+                updateOffscreenCanvas();
+                drawGrid();
+            }
+        }
+
+        function updateOffscreenCanvas() {
+            offscreenCanvas.width = canvas.width;
+            offscreenCanvas.height = canvas.height;
         }
         function initGrid() {
             grid = Array(ROWS).fill().map(() => Array(COLS).fill(null));
@@ -715,9 +788,23 @@
 
     let lastUpdateTime = 0;
     let updateInterval = 50;
-
-    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('resize', () => {
+        resizeCanvas(false);
+    });
     resizeCanvas();
+
+
+    const togglePanel = document.querySelector('.toggle-panel');
+    const sidePanel = document.querySelector('.side-panel');
+
+    togglePanel.addEventListener('click', () => {
+        sidePanel.classList.toggle('collapsed');
+        togglePanel.classList.toggle('collapsed');
+        
+        setTimeout(() => {
+            resizeCanvas(false);
+        }, 300);
+    });
 
     
 
@@ -734,7 +821,7 @@
 
     speedControl.addEventListener('input', () => {
         updateInterval = 100 - speedControl.value;
-        speedValue.textContent = `Speed: ${speedControl.value}`;
+        speedValue.textContent = `${speedControl.value}`;
     });
 
     canvas.addEventListener('click', (event) => {
@@ -866,12 +953,15 @@
     });
     document.addEventListener('DOMContentLoaded', initThemeSelector);
    
-    window.addEventListener('resize', updateOffscreenCanvas);
-    updateOffscreenCanvas();
+   
 
-    const populationHistory = [];
-    const maxHistoryLength = 100;
 
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
     initThemeSelector();
     initGrid();
 </script>
+
+</body>
+</html>
