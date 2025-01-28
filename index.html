@@ -10,95 +10,225 @@
     <link href="https://fonts.googleapis.com/css2?family=Sankofa+Display&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"></script>
     <style>
-        * {
-            font-family: "Sankofa Display", sans-serif !important;
-        }
-        body {
-            font-family: "Sankofa Display", sans-serif;
+           * {
             margin: 0;
             padding: 0;
-            background-color: #0c0c1d;
-            color: #00ffff;
-            display: flex;
-            flex-direction: column;
+            box-sizing: border-box;
+            font-family: "Quicksand", sans-serif !important;
+            touch-action: none;
+        }
+
+        body {
+            background: #1a1a1a;
+            color: #ffffff;
             min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
             overflow: hidden;
         }
+
         .main-container {
-            display: flex;
+            width: 100%;
             height: 100vh;
-            width: 100vw;
-            transition: all 0.3s ease;
+            max-height: 96vh;
+            background: #2a2a2a;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: grid;
+            grid-template-columns: 1fr auto;
+            padding: 10px;
+            gap: 0px;
+            position: relative;
         }
+
         .game-container {
             position: relative;
-            flex: 1;
-          
+            background: #000;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.8);
         }
+
         #gameCanvas {
-            position: absolute;
-            top: 0;
-            left: 0px;
-           
-            width: 100vw;
+            width: 100%;
             height: 100%;
-            border-radius: 5px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            border-radius: 20px;
+            touch-action: none;
         }
+        
         .overlay {
             position: absolute;
-            padding: 8px;
-            background-color: rgba(12, 12, 29, 0.8);
-            border-radius: 5px;
-            font-size: 0.9rem;
-            border: 1px solid #00ffff;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
+
         #statsOverlay {
             bottom: 10px;
             left: 10px;
         }
+        
         .side-panel {
-            width: 250px;
-            background-color: rgba(26, 26, 58, 0.9);
-            padding: 20px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            transition: transform 0.3s ease, width 0.3s ease;
-            position: relative;
-        }
-        .side-panel.collapsed {
-            transform: translateX(100%);
-            width: 0;
-            padding: 0;
-        }
-        .toggle-panel {
-            position: absolute;
-            left: -30px;
-            top: 50%;
-            transform: translateY(-50%);
-            background-color: rgba(26, 26, 58, 0.9);
-            color: #00ffff;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
-            border-radius: 5px 0 0 5px;
-            transition: transform 0.3s ease;
-            z-index: 10;
-        }
-        .toggle-panel:hover {
-            background-color: rgba(0, 255, 255, 0.2);
-        }
+    position: relative;
+    background: #222;
+    border-radius: 15px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    width: 250px;
+    transition: all 0.3s ease;
+    overflow: visible;
+}
+
+.side-panel.collapsed {
+    width: 0;
+    padding: 0;
+    margin: 0;
+    gap: 0px;
+}
+
+.side-panel.collapsed .control-group,
+.side-panel.collapsed .entity-list,
+.side-panel.collapsed .theme-selector {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+}
+.side-panel.collapsed .toggle-panel {
+    right: calc(100% + 40px);
+}
+
+.side-panel.collapsed > * {
+    visibility: hidden;
+}
+.toggle-panel {
+    position: absolute;
+    left: -40px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #2a2a2a;
+    border: none;
+    color: #fff;
+    padding: 12px;
+    border-radius: 8px 0 0 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    visibility: visible !important;
+}
+
+.side-panel.collapsed > *:not(.toggle-panel) {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.toggle-panel:hover {
+    background: #333;
+}
+
+.toggle-panel svg {
+    transition: transform 0.3s ease;
+}
+
+.side-panel.collapsed .toggle-panel svg {
+    transform: rotate(180deg);
+}
+        
         .toggle-panel.collapsed {
             transform: translateY(-50%) rotate(180deg);
             border-radius: 0 5px 5px 0;
         }
+
+        .action-button {
+    background: #2a2a2a;
+    border: none;
+    color: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.action-button svg {
+    width: 24px;
+    height: 24px;
+    transition: transform 0.2s ease;
+}
+
+.action-button:hover {
+    background: #333;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.action-button:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.side-panel.collapsed .control-group {
+    opacity: 0;
+    pointer-events: none;
+}
+        
         .controls {
             display: flex;
             flex-wrap: wrap;
             gap: 15px;
         }
+
+        .action-buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    width: 100%;
+}
+
+.action-button {
+    background: #2a2a2a;
+    border: none;
+    color: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-width: 44px;
+    min-height: 44px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+        
         button {
             font-family: "Sankofa Display", sans-serif;
             font-size: 1rem;
@@ -112,118 +242,163 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
+        
         button:hover {
             background-color: #00ffff;
             color: #1a1a3a;
         }
-        #speedControl {
-            flex-grow: 1;
-            appearance: none;
-            background: #1a1a3a;
-            outline: none;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: inset 0 0 5px rgba(0, 0, 0, 1);
-        }
-        #speedControl::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #00ffff;
-            cursor: pointer;
-            border: 4px solid #1a1a3a;
-            box-shadow: -407px 0 0 400px #00ffff;
-        }
+        
         .entity-list {
-            background-color: rgba(26, 26, 58, 0.8);
-            border-radius: 5px;
-            padding: 15px;
-            max-height: 200px;
+            background: #333;
+            border-radius: 8px;
+            padding: 10px;
+            max-height: 80px;
             overflow-y: auto;
-            border: 1px solid #00ffff;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
+
         .entity-list::-webkit-scrollbar {
             width: 8px;
         }
+
         .entity-list::-webkit-scrollbar-track {
-            background: #1a1a3a;
-        }
-        .entity-list::-webkit-scrollbar-thumb {
-            background-color: #00ffff;
+            background: #2a2a2a;
             border-radius: 4px;
         }
-        .entity-item {
-            margin-bottom: 10px;
-            padding: 8px;
-            border-radius: 3px;
-            background-color: rgba(26, 26, 58, 0.8);
-            border-left: 3px solid #00ffff;
+
+        .entity-list::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
         }
+
+        .entity-item {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 14px;
+        }
+
+        #speedControl {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: #444;
+            border-radius: 2px;
+            outline: none;
+            margin: 10px 0;
+        }
+
+        #speedControl::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #speedControl::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        
         #tooltip {
-            position: absolute;
-            background-color: rgba(12, 12, 29, 0.9);
-            color: #00ffff;
-            border: 1px solid #00ffff;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
-            padding: 5px;
-            border-radius: 5px;
-            font-size: 12px;
-            z-index: 1000;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 14px;
+            color: #fff;
             pointer-events: none;
+            z-index: 1000;
         }
 
         .theme-selector {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-top: 20px;
-            background-color: rgba(26, 26, 58, 0.8);
-            border-radius: 5px;
-            padding: 10px;
-            border: 1px solid #00ffff;
-        }
-        
-        .theme-option {
-            width: 30px;
-            height: 30px;
-            border-radius: 5px;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: transform 0.2s ease;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .theme-option:hover {
-            transform: scale(1.1);
-        }
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 8px;
+    padding: 10px;
+    background: #333;
+    border-radius: 8px;
+    height: auto;
+    width: 100%;
+}
+
+.theme-option {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 4px;
+    background: #2a2a2a;
+}
+
+.theme-option:hover {
+    transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.theme-option.selected {
+    border-color: #fff;
+}
         
         .theme-option.selected::after {
-            content: '✓';
+           
             color: white;
             font-size: 20px;
             text-shadow: 0 0 3px black;
         }
         
-        .color-preview {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin: 0 -2px;
-        }
+        .theme-option .color-preview {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
         
-        @media (min-width: 768px) {
+        @media (max-width: 768px) {
             .main-container {
-                flex-direction: row;
+                grid-template-columns: 1fr;
+                padding: 8px;
+                gap: 8px;
             }
-            .game-container {
-                flex: 1;
-            }
+
             .side-panel {
-                width: 250px;
-                margin-left: 20px;
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        width: auto;
+        max-width: 250px;
+        height: auto;
+        max-height: 80vh;
+        z-index: 100;
+    }
+
+    .side-panel.collapsed {
+        transform: translateX(calc(100% + 20px));
+    }
+
+    .toggle-panel {
+        left: -35px;
+        padding: 8px;
+    }
+
+    .action-buttons {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+            .action-button {
+                flex: 1;
+                min-width: 40px;
             }
         }
     </style>
@@ -239,15 +414,33 @@
             </div>
         </div>
         <div class="side-panel">
-            <button class="toggle-panel">◀</button>
-            <div class="controls">
-                <button id="startStopBtn">Start</button>
-                <button id="resetBtn">Reset</button>
+            <button class="toggle-panel">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor">
+                    <path d="m321-80-71-71 329-329-329-329 71-71 400 400L321-80Z"/>
+                </svg>
+            </button>
+            <div class="control-group">
+                <div class="action-buttons">
+                    <button class="action-button" id="startStopBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor">
+                            <path d="M320-200v-560l440 280-440 280Z"/>
+                        </svg>
+                    </button>
+                    <button class="action-button" id="resetBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor">
+                            <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Z"/>
+                        </svg>
+                    </button>
+                </div>
                 <input type="range" id="speedControl" min="1" max="100" value="50">
-                <span id="speedValue">50</span>
+               
             </div>
-            <div id="entityList" class="entity-list"></div>
-            <div class="theme-selector" id="themeSelector"></div>
+            <div class="control-group">
+                <div id="entityList" class="entity-list"></div>
+            </div>
+            <div class="control-group">
+                <div id="themeSelector" class="theme-selector"></div>
+            </div>
         </div>
     </div>
     <div id="tooltip" style="display: none;"></div>
@@ -264,7 +457,7 @@
         const avgEnergy = document.getElementById('avgEnergy');
         const entityList = document.getElementById('entityList');
     
-        let CELL_SIZE = 8;
+        let CELL_SIZE = 9;
         let ROWS, COLS;
         let grid = [];
         let entities = new Map();
@@ -283,18 +476,65 @@
         }
 
         const colorThemes = [
-    { name: 'Default', primary: '#00ffff', secondary: '#e94560', tertiary: '#c5ee4f', background: '#0c0c1d' },
-    { name: 'Neon Nights', primary: '#ff00ff', secondary: '#00ff00', tertiary: '#ffff00', background: '#000000' },
-    { name: 'Pastel Dream', primary: '#ffb3ba', secondary: '#bae1ff', tertiary: '#baffc9', background: '#fff5ba' },
-    { name: 'Cyber Punk', primary: '#f72585', secondary: '#4361ee', tertiary: '#4cc9f0', background: '#3a0ca3' },
-    { name: 'Forest', primary: '#2d6a4f', secondary: '#95d5b2', tertiary: '#d8f3dc', background: '#1b4332' },
-    { name: 'Sunset', primary: '#ff7b00', secondary: '#ffb700', tertiary: '#ff006e', background: '#8900f2' },
-    { name: 'Ocean', primary: '#00b4d8', secondary: '#0077b6', tertiary: '#caf0f8', background: '#03045e' },
-    { name: 'Monochrome', primary: '#ffffff', secondary: '#cccccc', tertiary: '#666666', background: '#000000' },
+    {
+        name: 'Cyberpunk',
+        primary: '#FF2A6D',
+        secondary: '#05D9E8',
+        tertiary: '#01FFC3',
+        background: '#1A1B25'
+    },
+    {
+        name: 'Ultraviolet',
+        primary: '#BD00FF',
+        secondary: '#4C0BFF',
+        tertiary: '#0095FF',
+        background: '#0D0221'
+    },
+    {
+        name: 'Digital Ocean',
+        primary: '#00FFD1',
+        secondary: '#0083FF',
+        tertiary: '#7C00FF',
+        background: '#090E23'
+    },
+    {
+        name: 'Molten Core',
+        primary: '#FF4D00',
+        secondary: '#850000',
+        tertiary: '#FF9300',
+        background: '#1F0A07'
+    },
+    {
+        name: 'Arctic Pulse',
+        primary: '#E2F3F7',
+        secondary: '#4EBFDF',
+        tertiary: '#0784B5',
+        background: '#012841'
+    },
+    {
+        name: 'Dark Matter',
+        primary: '#C874FF',
+        secondary: '#FF4365',
+        tertiary: '#7A04EB',
+        background: '#080010'
+    },
+    {
+        name: 'Nuclear Dawn',
+        primary: '#7FFF00',
+        secondary: '#C4F700',
+        tertiary: '#2EF700',
+        background: '#0A1F00'
+    },
+    {
+        name: 'Quantum Flux',
+        primary: '#00EEFF',
+        secondary: '#00FF87',
+        tertiary: '#00B8FF',
+        background: '#001B29'
+    }
 ];
 
         let currentTheme = colorThemes[0];
-    
     
         class Entity {
             constructor(x, y, dna = null) {
@@ -462,22 +702,36 @@
         }
         
         function initThemeSelector() {
-            const themeSelector = document.getElementById('themeSelector');
-            themeSelector.innerHTML = ''; // Clear existing content
-            colorThemes.forEach((theme, index) => {
-                const themeOption = document.createElement('div');
-                themeOption.className = 'theme-option';
-                themeOption.style.backgroundColor = theme.background;
-                themeOption.innerHTML = `
-                    <div class="color-preview" style="background-color: ${theme.primary}"></div>
-                    <div class="color-preview" style="background-color: ${theme.secondary}"></div>
-                    <div class="color-preview" style="background-color: ${theme.tertiary}"></div>
-                `;
-                themeOption.addEventListener('click', () => selectTheme(index));
-                themeSelector.appendChild(themeOption);
-            });
-            updateSelectedTheme();
+    const themeSelector = document.getElementById('themeSelector');
+    themeSelector.innerHTML = '';
+    
+    colorThemes.forEach((theme, index) => {
+        const themeOption = document.createElement('div');
+        themeOption.className = 'theme-option';
+        themeOption.style.backgroundColor = theme.background;
+        
+        const previewContainer = document.createElement('div');
+        previewContainer.style.display = 'flex';
+        previewContainer.style.gap = '2px';
+        previewContainer.style.flexWrap = 'nowrap';
+        
+        [theme.primary, theme.secondary, theme.tertiary].forEach(color => {
+            const preview = document.createElement('div');
+            preview.className = 'color-preview';
+            preview.style.backgroundColor = color;
+            previewContainer.appendChild(preview);
+        });
+        
+        themeOption.appendChild(previewContainer);
+        
+        if (theme === currentTheme) {
+            themeOption.classList.add('selected');
         }
+        
+        themeOption.addEventListener('click', () => selectTheme(index));
+        themeSelector.appendChild(themeOption);
+    });
+}
         
         function selectTheme(index) {
             currentTheme = colorThemes[index];
@@ -520,48 +774,47 @@
         }
 
         function resizeCanvas(resetGrid = true) {
-            const container = canvas.parentElement;
-            const newWidth = container.clientWidth;
-            const newHeight = container.clientHeight;
-            const newRows = Math.floor(newHeight / CELL_SIZE);
-            const newCols = Math.floor(newWidth / CELL_SIZE);
-            
-            if (newWidth !== canvas.width || newHeight !== canvas.height) {
-                canvas.width = newWidth;
-                canvas.height = newHeight;
-                
-                if (resetGrid || newRows !== ROWS || newCols !== COLS) {
-                    const oldGrid = grid;
-                    const oldEntities = entities;
-                    
-                    ROWS = newRows;
-                    COLS = newCols;
-                    grid = Array(ROWS).fill().map(() => Array(COLS).fill(null));
-                    entities = new Map();
-                    
-                    // Preserve existing entities
-                    oldEntities.forEach((entity, key) => {
-                        const [x, y] = key.split('-').map(Number);
-                        if (x < ROWS && y < COLS) {
-                            grid[x][y] = entity;
-                            entities.set(`${x}-${y}`, entity);
-                        }
-                    });
-                    
-                    if (resetGrid) {
-                        initGrid();
-                    }
-                }
-                
-                updateOffscreenCanvas();
-                drawGrid();
+    const container = canvas.parentElement;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    
+    const newRows = Math.floor(containerHeight / CELL_SIZE);
+    const newCols = Math.floor(containerWidth / CELL_SIZE);
+    
+    canvas.width = containerWidth;
+    canvas.height = containerHeight;
+    
+    if (resetGrid || newRows !== ROWS || newCols !== COLS) {
+        const oldEntities = new Map(entities);
+        
+        ROWS = newRows;
+        COLS = newCols;
+        grid = Array(ROWS).fill().map(() => Array(COLS).fill(null));
+        entities.clear();
+        
+        oldEntities.forEach((entity, key) => {
+            const [x, y] = key.split('-').map(Number);
+            if (x < ROWS && y < COLS) {
+                grid[x][y] = entity;
+                entities.set(`${x}-${y}`, entity);
             }
+        });
+        
+        if (resetGrid) {
+            initGrid();
         }
+    }
+    
+    updateOffscreenCanvas();
+    drawGrid();
+}
+
 
         function updateOffscreenCanvas() {
             offscreenCanvas.width = canvas.width;
             offscreenCanvas.height = canvas.height;
         }
+        
         function initGrid() {
             grid = Array(ROWS).fill().map(() => Array(COLS).fill(null));
             entities.clear();
@@ -579,6 +832,7 @@
             drawGrid();
             updateEntityList();
         }
+
         function updateGrid() {
             const newGrid = Array(ROWS).fill().map(() => Array(COLS).fill(null));
             const newEntities = new Map();
@@ -728,48 +982,54 @@
         }
 
         function drawGrid() {
-        offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
-        entities.forEach(entity => {
-            offscreenCtx.fillStyle = calculateEntityColor(entity);
-            offscreenCtx.beginPath();
-            if (entity instanceof ComplexEntity) {
-                offscreenCtx.rect(
-                    entity.y * CELL_SIZE,
-                    entity.x * CELL_SIZE,
-                    CELL_SIZE * entity.size,
-                    CELL_SIZE * entity.size
-                );
-            } else if (entity instanceof DeadMatter) {
-                offscreenCtx.rect(
-                    entity.y * CELL_SIZE,
-                    entity.x * CELL_SIZE,
-                    CELL_SIZE,
-                    CELL_SIZE
-                );
-            } else {
-                offscreenCtx.arc(
-                    entity.y * CELL_SIZE + CELL_SIZE / 2,
-                    entity.x * CELL_SIZE + CELL_SIZE / 2,
-                    CELL_SIZE / 2 - 1,
-                    0,
-                    2 * Math.PI
-                );
-            }
-            offscreenCtx.fill();
+    offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    entities.forEach(entity => {
+        offscreenCtx.fillStyle = calculateEntityColor(entity);
+        offscreenCtx.beginPath();
+        
+        if (entity instanceof ComplexEntity) {
+            offscreenCtx.rect(
+                entity.y * CELL_SIZE,
+                entity.x * CELL_SIZE,
+                CELL_SIZE * entity.size,
+                CELL_SIZE * entity.size
+            );
+        } else if (entity instanceof DeadMatter) {
+            offscreenCtx.rect(
+                entity.y * CELL_SIZE,
+                entity.x * CELL_SIZE,
+                CELL_SIZE,
+                CELL_SIZE
+            );
+        } else {
+            offscreenCtx.arc(
+                entity.y * CELL_SIZE + CELL_SIZE / 2,
+                entity.x * CELL_SIZE + CELL_SIZE / 2,
+                CELL_SIZE / 2 - 1,
+                0,
+                2 * Math.PI
+            );
+        }
+        offscreenCtx.fill();
 
-            if (entity.lastInteraction && !(entity instanceof DeadMatter)) {
-                offscreenCtx.strokeStyle = entity.lastInteraction === 'cooperate' ? '#c5ee4f' :
-                                           entity.lastInteraction === 'attack' ? '#ff0000' :
-                                           entity.lastInteraction === 'attacked' ? '#ff8c00' :
-                                           entity.lastInteraction === 'reproduce' ? '#ffffff' : entity.color;
-                offscreenCtx.lineWidth = 2;
-                offscreenCtx.stroke();
-            }
-        });
+        if (entity.lastInteraction && !(entity instanceof DeadMatter)) {
+            const interactionColors = {
+                cooperate: '#c5ee4f',
+                attack: '#ff0000',
+                attacked: '#ff8c00',
+                reproduce: '#ffffff'
+            };
+            
+            offscreenCtx.strokeStyle = interactionColors[entity.lastInteraction] || entity.color;
+            offscreenCtx.lineWidth = 2;
+            offscreenCtx.stroke();
+        }
+    });
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(offscreenCanvas, 0, 0);
-    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(offscreenCanvas, 0, 0);
+}
 
     function gameLoop(timestamp) {
         if (!lastUpdateTime) lastUpdateTime = timestamp;
@@ -793,42 +1053,118 @@
     });
     resizeCanvas();
 
-
-    const togglePanel = document.querySelector('.toggle-panel');
+    function updatePanelVisibility() {
     const sidePanel = document.querySelector('.side-panel');
-
-    togglePanel.addEventListener('click', () => {
-        sidePanel.classList.toggle('collapsed');
-        togglePanel.classList.toggle('collapsed');
+    const isCollapsed = sidePanel.classList.contains('collapsed');
+    const controls = document.querySelectorAll('.control-group, .entity-list, .theme-selector');
+    const isMobile = window.innerWidth <= 768;
+    
+    requestAnimationFrame(() => {
+        sidePanel.style.width = isCollapsed ? '0' : '250px';
+        sidePanel.style.padding = isCollapsed ? '0' : '10px';
         
-        setTimeout(() => {
+        controls.forEach(element => {
+            element.style.display = isCollapsed ? 'none' : (element.classList.contains('theme-selector') ? 'grid' : 'flex');
+            element.style.opacity = isCollapsed ? '0' : '1';
+            element.style.pointerEvents = isCollapsed ? 'none' : 'all';
+        });
+        
+        if (isMobile) {
+            Object.assign(sidePanel.style, {
+                position: 'fixed',
+                right: '10px',
+                bottom: '10px',
+                top: 'auto'
+            });
+        } else {
+            Object.assign(sidePanel.style, {
+                position: 'relative',
+                right: '0',
+                top: '0',
+                bottom: '0'
+            });
+        }
+        
+        requestAnimationFrame(() => {
             resizeCanvas(false);
-        }, 300);
+        });
+    });
+}
+
+const resizeObserver = new ResizeObserver(entries => {
+    entries.forEach(() => {
+        requestAnimationFrame(() => {
+            resizeCanvas(false);
+        });
+    });
+});
+
+resizeObserver.observe(canvas.parentElement);
+
+const togglePanel = document.querySelector('.toggle-panel');
+const sidePanel = document.querySelector('.side-panel');
+
+
+    window.addEventListener('resize', () => {
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+            sidePanel.style.position = 'fixed';
+            sidePanel.style.right = '10px';
+            sidePanel.style.bottom = '10px';
+            sidePanel.style.top = 'auto';
+        } else {
+            sidePanel.style.position = 'relative';
+            sidePanel.style.right = '0';
+            sidePanel.style.top = '0';
+            sidePanel.style.bottom = '0';
+        }
+        updatePanelVisibility();
     });
 
+    togglePanel.addEventListener('click', () => {
+    sidePanel.classList.toggle('collapsed');
+    const svg = togglePanel.querySelector('svg');
+    svg.style.transform = sidePanel.classList.contains('collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
     
+    requestAnimationFrame(() => {
+        updatePanelVisibility();
+    });
+});
 
     startStopBtn.addEventListener('click', () => {
         isRunning = !isRunning;
-        startStopBtn.textContent = isRunning ? 'Stop' : 'Start';
+        const svg = startStopBtn.querySelector('svg');
+        svg.innerHTML = isRunning 
+            ? '<path d="M520-200h80v-560h-80v560Zm-160 0h80v-560h-80v560Z"/>'
+            : '<path d="M320-200v-560l440 280-440 280Z"/>';
+        
+        startStopBtn.style.backgroundColor = isRunning ? '#333' : '#2a2a2a';
+        
         if (isRunning) {
             lastUpdateTime = 0;
             requestAnimationFrame(gameLoop);
         }
     });
 
-    resetBtn.addEventListener('click', initGrid);
-
-    speedControl.addEventListener('input', () => {
-        updateInterval = 100 - speedControl.value;
-        speedValue.textContent = `${speedControl.value}`;
+    resetBtn.addEventListener('click', () => {
+        resetBtn.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            resetBtn.style.transform = 'scale(1)';
+        }, 100);
+        initGrid();
     });
-
-    canvas.addEventListener('click', (event) => {
-        const rect = canvas.getBoundingClientRect();
-        const x = Math.floor((event.clientY - rect.top) * (ROWS / rect.height));
-        const y = Math.floor((event.clientX - rect.left) * (COLS / rect.width));
         
+    speedControl.addEventListener('input', () => {
+            updateInterval = 100 - speedControl.value;
+            speedValue.textContent = `${speedControl.value}`;
+        });
+
+        canvas.addEventListener('click', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor((event.clientY - rect.top) * (ROWS / rect.height));
+    const y = Math.floor((event.clientX - rect.left) * (COLS / rect.width));
+    
+    if (x >= 0 && x < ROWS && y >= 0 && y < COLS) {
         if (grid[x][y]) {
             grid[x][y] = null;
             entities.delete(`${x}-${y}`);
@@ -840,7 +1176,8 @@
         updateStats();
         drawGrid();
         updateEntityList();
-    });
+    }
+});
 
     canvas.addEventListener('mousemove', (event) => {
         const rect = canvas.getBoundingClientRect();
@@ -854,11 +1191,12 @@
             hideTooltip();
         }
     });
+    
     canvas.addEventListener('mouseout', hideTooltip);
 
     function showTooltip(x, y, entity) {
         const tooltip = document.getElementById('tooltip') || createTooltip();
-        tooltip.style.display = 'block';
+        tooltip.style.display = 'relative';
         tooltip.style.left = `${x + 10}px`;
         tooltip.style.top = `${y + 10}px`;
         if (entity instanceof DeadMatter) {
@@ -900,64 +1238,32 @@
         return tooltip;
     }
 
-    let zoomLevel = 1;
-    const zoomSpeed = 0.1;
-
-    canvas.addEventListener('wheel', (event) => {
-        event.preventDefault();
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
-
-        const wheel = event.deltaY < 0 ? 1 : -1;
-        zoomLevel += wheel * zoomSpeed;
-        zoomLevel = Math.max(0.5, Math.min(zoomLevel, 3));
-
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.translate(mouseX, mouseY);
-        ctx.scale(zoomLevel, zoomLevel);
-        ctx.translate(-mouseX, -mouseY);
-
-        drawGrid();
-    });
-
-    let isPanning = false;
-    let startPanX, startPanY;
-
-    canvas.addEventListener('mousedown', (event) => {
-        isPanning = true;
-        startPanX = event.clientX - canvas.offsetLeft;
-        startPanY = event.clientY - canvas.offsetTop;
-    });
-
-    canvas.addEventListener('mousemove', (event) => {
-        if (!isPanning) return;
-
-        const panX = event.clientX - canvas.offsetLeft;
-        const panY = event.clientY - canvas.offsetTop;
-
-        ctx.translate((panX - startPanX) / zoomLevel, (panY - startPanY) / zoomLevel);
-        startPanX = panX;
-        startPanY = panY;
-
-        drawGrid();
-    });
-
-    canvas.addEventListener('mouseup', () => {
-        isPanning = false;
-    });
-
-    canvas.addEventListener('mouseleave', () => {
-        isPanning = false;
-    });
     document.addEventListener('DOMContentLoaded', initThemeSelector);
    
-   
+    window.addEventListener('resize', () => {
+    const isMobile = window.innerWidth <= 768;
+    const sidePanel = document.querySelector('.side-panel');
+    
+    requestAnimationFrame(() => {
+        if (isMobile) {
+            Object.assign(sidePanel.style, {
+                position: 'fixed',
+                right: '10px',
+                bottom: '10px',
+                top: 'auto'
+            });
+        } else {
+            Object.assign(sidePanel.style, {
+                position: 'relative',
+                right: '0',
+                top: '0',
+                bottom: '0'
+            });
+        }
+        updatePanelVisibility();
+    });
+});
 
-
-
-    window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
     initThemeSelector();
     initGrid();
