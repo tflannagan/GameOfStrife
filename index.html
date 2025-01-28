@@ -409,8 +409,8 @@
             <canvas id="gameCanvas"></canvas>
             <div id="statsOverlay" class="overlay">
                 Gen: <span id="generationCount">0</span> | 
-                Pop: <span id="populationCount">0</span> | 
-                Avg E: <span id="avgEnergy">0.00</span>
+                Pop: <span id="populationCount">0</span> 
+             
             </div>
         </div>
         <div class="side-panel">
@@ -454,7 +454,7 @@
         const speedValue = document.getElementById('speedValue');
         const generationCount = document.getElementById('generationCount');
         const populationCount = document.getElementById('populationCount');
-        const avgEnergy = document.getElementById('avgEnergy');
+        
         const entityList = document.getElementById('entityList');
     
         let CELL_SIZE = 9;
@@ -476,12 +476,12 @@
         }
 
         const colorThemes = [
-    {
-        name: 'Cyberpunk',
-        primary: '#FF2A6D',
-        secondary: '#05D9E8',
-        tertiary: '#01FFC3',
-        background: '#1A1B25'
+     {
+        name: 'Earth',
+        primary: '#4B7BE5',
+        secondary: '#345E8F',
+        tertiary: '#89CFF0',
+        background: '#0A1621'
     },
     {
         name: 'Ultraviolet',
@@ -758,20 +758,39 @@
         }
         
         function calculateEntityColor(entity) {
-            if (entity instanceof DeadMatter) {
-                return chroma.mix(currentTheme.secondary, currentTheme.background, entity.decompositionStage / 5).hex();
-            }
-            
-            const energyHue = entity.energy * 120;
-            const aggressionSaturation = entity.dna.aggression * 100;
-            const cooperationLightness = 50 + entity.dna.cooperation * 50;
-            
-            return chroma.mix(
-                chroma.hsl(energyHue, aggressionSaturation, cooperationLightness),
-                currentTheme.primary,
-                0.5
-            ).hex();
+    if (entity instanceof DeadMatter) {
+        return chroma.mix('#2E1810', '#1A0F0A', entity.decompositionStage / 5).hex();
+    }
+    
+    if (currentTheme.name === 'Earth') {
+        const stability = (entity.age * (1 - entity.dna.mutationRate)) / 100;
+        const energy = entity.energy;
+        
+        if (entity.lastInteraction || energy > 1.2) {
+            return chroma.mix('#4B7BE5', '#89CFF0', energy).hex();
         }
+        
+        if (stability > 0.6) {
+            if (energy < 0.5) {
+                return chroma.mix('#2E1810', '#1E3F1A', energy).hex();
+            } else {
+                return chroma.mix('#1E3F1A', '#2E4A22', energy - 0.5).hex();
+            }
+        }
+        
+        return chroma.mix('#345E8F', '#4B7BE5', energy).hex();
+    }
+    
+    const energyHue = entity.energy * 120;
+    const aggressionSaturation = entity.dna.aggression * 100;
+    const cooperationLightness = 50 + entity.dna.cooperation * 50;
+    
+    return chroma.mix(
+        chroma.hsl(energyHue, aggressionSaturation, cooperationLightness),
+        currentTheme.primary,
+        0.5
+    ).hex();
+}
 
         function resizeCanvas(resetGrid = true) {
     const container = canvas.parentElement;
@@ -808,7 +827,6 @@
     updateOffscreenCanvas();
     drawGrid();
 }
-
 
         function updateOffscreenCanvas() {
             offscreenCanvas.width = canvas.width;
@@ -963,7 +981,7 @@
             generationCount.textContent = generation;
             populationCount.textContent = entities.size;
             const totalEnergy = Array.from(entities.values()).reduce((sum, entity) => sum + entity.energy, 0);
-            avgEnergy.textContent = (totalEnergy / entities.size || 0).toFixed(2);
+           
         }
 
         function updateEntityList() {
@@ -986,31 +1004,23 @@
     
     entities.forEach(entity => {
         offscreenCtx.fillStyle = calculateEntityColor(entity);
-        offscreenCtx.beginPath();
         
-        if (entity instanceof ComplexEntity) {
-            offscreenCtx.rect(
-                entity.y * CELL_SIZE,
-                entity.x * CELL_SIZE,
-                CELL_SIZE * entity.size,
-                CELL_SIZE * entity.size
-            );
-        } else if (entity instanceof DeadMatter) {
-            offscreenCtx.rect(
-                entity.y * CELL_SIZE,
-                entity.x * CELL_SIZE,
-                CELL_SIZE,
-                CELL_SIZE
-            );
-        } else {
-            offscreenCtx.arc(
-                entity.y * CELL_SIZE + CELL_SIZE / 2,
-                entity.x * CELL_SIZE + CELL_SIZE / 2,
-                CELL_SIZE / 2 - 1,
-                0,
-                2 * Math.PI
-            );
-        }
+        const x = entity.y * CELL_SIZE;
+        const y = entity.x * CELL_SIZE;
+        const size = entity instanceof ComplexEntity ? CELL_SIZE * entity.size : CELL_SIZE;
+        const radius = 0;
+
+        offscreenCtx.beginPath();
+        offscreenCtx.moveTo(x + radius, y);
+        offscreenCtx.lineTo(x + size - radius, y);
+        offscreenCtx.quadraticCurveTo(x + size, y, x + size, y + radius);
+        offscreenCtx.lineTo(x + size, y + size - radius);
+        offscreenCtx.quadraticCurveTo(x + size, y + size, x + size - radius, y + size);
+        offscreenCtx.lineTo(x + radius, y + size);
+        offscreenCtx.quadraticCurveTo(x, y + size, x, y + size - radius);
+        offscreenCtx.lineTo(x, y + radius);
+        offscreenCtx.quadraticCurveTo(x, y, x + radius, y);
+        offscreenCtx.closePath();
         offscreenCtx.fill();
 
         if (entity.lastInteraction && !(entity instanceof DeadMatter)) {
@@ -1022,142 +1032,141 @@
             };
             
             offscreenCtx.strokeStyle = interactionColors[entity.lastInteraction] || entity.color;
-            offscreenCtx.lineWidth = 2;
-            offscreenCtx.stroke();
+            offscreenCtx.lineWidth = 1;
+           
         }
     });
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(offscreenCanvas, 0, 0);
 }
+        function gameLoop(timestamp) {
+            if (!lastUpdateTime) lastUpdateTime = timestamp;
+            const elapsed = timestamp - lastUpdateTime;
 
-    function gameLoop(timestamp) {
-        if (!lastUpdateTime) lastUpdateTime = timestamp;
-        const elapsed = timestamp - lastUpdateTime;
+            if (elapsed > updateInterval) {
+                updateGrid();
+                drawGrid();
+                lastUpdateTime = timestamp;
+            }
 
-        if (elapsed > updateInterval) {
-            updateGrid();
-            drawGrid();
-            lastUpdateTime = timestamp;
+            if (isRunning) {
+                requestAnimationFrame(gameLoop);
+            }
         }
 
-        if (isRunning) {
-            requestAnimationFrame(gameLoop);
-        }
+        let lastUpdateTime = 0;
+        let updateInterval = 50;
+        window.addEventListener('resize', () => {
+            resizeCanvas(false);
+        });
+        resizeCanvas();
+
+        function updatePanelVisibility() {
+        const sidePanel = document.querySelector('.side-panel');
+        const isCollapsed = sidePanel.classList.contains('collapsed');
+        const controls = document.querySelectorAll('.control-group, .entity-list, .theme-selector');
+        const isMobile = window.innerWidth <= 768;
+        
+        requestAnimationFrame(() => {
+            sidePanel.style.width = isCollapsed ? '0' : '250px';
+            sidePanel.style.padding = isCollapsed ? '0' : '10px';
+            
+            controls.forEach(element => {
+                element.style.display = isCollapsed ? 'none' : (element.classList.contains('theme-selector') ? 'grid' : 'flex');
+                element.style.opacity = isCollapsed ? '0' : '1';
+                element.style.pointerEvents = isCollapsed ? 'none' : 'all';
+            });
+            
+            if (isMobile) {
+                Object.assign(sidePanel.style, {
+                    position: 'fixed',
+                    right: '10px',
+                    bottom: '10px',
+                    top: 'auto'
+                });
+            } else {
+                Object.assign(sidePanel.style, {
+                    position: 'relative',
+                    right: '0',
+                    top: '0',
+                    bottom: '0'
+                });
+            }
+            
+            requestAnimationFrame(() => {
+                resizeCanvas(false);
+            });
+        });
     }
 
-    let lastUpdateTime = 0;
-    let updateInterval = 50;
-    window.addEventListener('resize', () => {
-        resizeCanvas(false);
-    });
-    resizeCanvas();
-
-    function updatePanelVisibility() {
-    const sidePanel = document.querySelector('.side-panel');
-    const isCollapsed = sidePanel.classList.contains('collapsed');
-    const controls = document.querySelectorAll('.control-group, .entity-list, .theme-selector');
-    const isMobile = window.innerWidth <= 768;
-    
-    requestAnimationFrame(() => {
-        sidePanel.style.width = isCollapsed ? '0' : '250px';
-        sidePanel.style.padding = isCollapsed ? '0' : '10px';
-        
-        controls.forEach(element => {
-            element.style.display = isCollapsed ? 'none' : (element.classList.contains('theme-selector') ? 'grid' : 'flex');
-            element.style.opacity = isCollapsed ? '0' : '1';
-            element.style.pointerEvents = isCollapsed ? 'none' : 'all';
+        const resizeObserver = new ResizeObserver(entries => {
+            entries.forEach(() => {
+                requestAnimationFrame(() => {
+                    resizeCanvas(false);
+                });
+            });
         });
-        
-        if (isMobile) {
-            Object.assign(sidePanel.style, {
-                position: 'fixed',
-                right: '10px',
-                bottom: '10px',
-                top: 'auto'
-            });
-        } else {
-            Object.assign(sidePanel.style, {
-                position: 'relative',
-                right: '0',
-                top: '0',
-                bottom: '0'
-            });
-        }
+
+        resizeObserver.observe(canvas.parentElement);
+
+        const togglePanel = document.querySelector('.toggle-panel');
+        const sidePanel = document.querySelector('.side-panel');
+
+
+        window.addEventListener('resize', () => {
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+                sidePanel.style.position = 'fixed';
+                sidePanel.style.right = '10px';
+                sidePanel.style.bottom = '10px';
+                sidePanel.style.top = 'auto';
+            } else {
+                sidePanel.style.position = 'relative';
+                sidePanel.style.right = '0';
+                sidePanel.style.top = '0';
+                sidePanel.style.bottom = '0';
+            }
+            updatePanelVisibility();
+        });
+
+        togglePanel.addEventListener('click', () => {
+        sidePanel.classList.toggle('collapsed');
+        const svg = togglePanel.querySelector('svg');
+        svg.style.transform = sidePanel.classList.contains('collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
         
         requestAnimationFrame(() => {
-            resizeCanvas(false);
+            updatePanelVisibility();
         });
     });
-}
 
-const resizeObserver = new ResizeObserver(entries => {
-    entries.forEach(() => {
-        requestAnimationFrame(() => {
-            resizeCanvas(false);
+        startStopBtn.addEventListener('click', () => {
+            isRunning = !isRunning;
+            const svg = startStopBtn.querySelector('svg');
+            svg.innerHTML = isRunning 
+                ? '<path d="M520-200h80v-560h-80v560Zm-160 0h80v-560h-80v560Z"/>'
+                : '<path d="M320-200v-560l440 280-440 280Z"/>';
+            
+            startStopBtn.style.backgroundColor = isRunning ? '#333' : '#2a2a2a';
+            
+            if (isRunning) {
+                lastUpdateTime = 0;
+                requestAnimationFrame(gameLoop);
+            }
         });
-    });
-});
 
-resizeObserver.observe(canvas.parentElement);
-
-const togglePanel = document.querySelector('.toggle-panel');
-const sidePanel = document.querySelector('.side-panel');
-
-
-    window.addEventListener('resize', () => {
-        const isMobile = window.innerWidth <= 768;
-        if (isMobile) {
-            sidePanel.style.position = 'fixed';
-            sidePanel.style.right = '10px';
-            sidePanel.style.bottom = '10px';
-            sidePanel.style.top = 'auto';
-        } else {
-            sidePanel.style.position = 'relative';
-            sidePanel.style.right = '0';
-            sidePanel.style.top = '0';
-            sidePanel.style.bottom = '0';
-        }
-        updatePanelVisibility();
-    });
-
-    togglePanel.addEventListener('click', () => {
-    sidePanel.classList.toggle('collapsed');
-    const svg = togglePanel.querySelector('svg');
-    svg.style.transform = sidePanel.classList.contains('collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
-    
-    requestAnimationFrame(() => {
-        updatePanelVisibility();
-    });
-});
-
-    startStopBtn.addEventListener('click', () => {
-        isRunning = !isRunning;
-        const svg = startStopBtn.querySelector('svg');
-        svg.innerHTML = isRunning 
-            ? '<path d="M520-200h80v-560h-80v560Zm-160 0h80v-560h-80v560Z"/>'
-            : '<path d="M320-200v-560l440 280-440 280Z"/>';
-        
-        startStopBtn.style.backgroundColor = isRunning ? '#333' : '#2a2a2a';
-        
-        if (isRunning) {
-            lastUpdateTime = 0;
-            requestAnimationFrame(gameLoop);
-        }
-    });
-
-    resetBtn.addEventListener('click', () => {
-        resetBtn.style.transform = 'scale(0.95)';
-        setTimeout(() => {
-            resetBtn.style.transform = 'scale(1)';
-        }, 100);
-        initGrid();
-    });
-        
-    speedControl.addEventListener('input', () => {
-            updateInterval = 100 - speedControl.value;
-            speedValue.textContent = `${speedControl.value}`;
+        resetBtn.addEventListener('click', () => {
+            resetBtn.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                resetBtn.style.transform = 'scale(1)';
+            }, 100);
+            initGrid();
         });
+            
+        speedControl.addEventListener('input', () => {
+                updateInterval = 100 - speedControl.value;
+                speedValue.textContent = `${speedControl.value}`;
+            });
 
         canvas.addEventListener('click', (event) => {
     const rect = canvas.getBoundingClientRect();
@@ -1179,94 +1188,94 @@ const sidePanel = document.querySelector('.side-panel');
     }
 });
 
-    canvas.addEventListener('mousemove', (event) => {
-        const rect = canvas.getBoundingClientRect();
-        const x = Math.floor((event.clientY - rect.top) * (ROWS / rect.height));
-        const y = Math.floor((event.clientX - rect.left) * (COLS / rect.width));
+        canvas.addEventListener('mousemove', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((event.clientY - rect.top) * (ROWS / rect.height));
+            const y = Math.floor((event.clientX - rect.left) * (COLS / rect.width));
+            
+            const entity = grid[x] && grid[x][y];
+            if (entity) {
+                showTooltip(event.clientX, event.clientY, entity);
+            } else {
+                hideTooltip();
+            }
+        });
         
-        const entity = grid[x] && grid[x][y];
-        if (entity) {
-            showTooltip(event.clientX, event.clientY, entity);
-        } else {
-            hideTooltip();
+        canvas.addEventListener('mouseout', hideTooltip);
+
+        function showTooltip(x, y, entity) {
+            const tooltip = document.getElementById('tooltip') || createTooltip();
+            tooltip.style.display = 'relative';
+            tooltip.style.left = `${x + 10}px`;
+            tooltip.style.top = `${y + 10}px`;
+            if (entity instanceof DeadMatter) {
+                tooltip.innerHTML = `
+                    <strong>Dead Matter</strong><br>
+                    Energy: ${entity.energy.toFixed(2)}<br>
+                    Decomposition Stage: ${entity.decompositionStage}/5
+                `;
+            } else {
+                tooltip.innerHTML = `
+                    <strong>${entity.name}</strong><br>
+                    Energy: ${entity.energy.toFixed(2)}<br>
+                    Age: ${entity.age}<br>
+                    Cooperation: ${entity.dna.cooperation.toFixed(2)}<br>
+                    Aggression: ${entity.dna.aggression.toFixed(2)}<br>
+                    ${entity instanceof ComplexEntity ? `Size: ${entity.size}` : ''}
+                `;
+            }
         }
-    });
+
+        function hideTooltip() {
+            const tooltip = document.getElementById('tooltip');
+            if (tooltip) {
+                tooltip.style.display = 'none';
+            }
+        }
+
+        function createTooltip() {
+            const tooltip = document.createElement('div');
+            tooltip.id = 'tooltip';
+            tooltip.style.position = 'absolute';
+            tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            tooltip.style.color = 'white';
+            tooltip.style.padding = '5px';
+            tooltip.style.borderRadius = '5px';
+            tooltip.style.fontSize = '12px';
+            tooltip.style.zIndex = '1000';
+            document.body.appendChild(tooltip);
+            return tooltip;
+        }
+
+        document.addEventListener('DOMContentLoaded', initThemeSelector);
     
-    canvas.addEventListener('mouseout', hideTooltip);
-
-    function showTooltip(x, y, entity) {
-        const tooltip = document.getElementById('tooltip') || createTooltip();
-        tooltip.style.display = 'relative';
-        tooltip.style.left = `${x + 10}px`;
-        tooltip.style.top = `${y + 10}px`;
-        if (entity instanceof DeadMatter) {
-            tooltip.innerHTML = `
-                <strong>Dead Matter</strong><br>
-                Energy: ${entity.energy.toFixed(2)}<br>
-                Decomposition Stage: ${entity.decompositionStage}/5
-            `;
-        } else {
-            tooltip.innerHTML = `
-                <strong>${entity.name}</strong><br>
-                Energy: ${entity.energy.toFixed(2)}<br>
-                Age: ${entity.age}<br>
-                Cooperation: ${entity.dna.cooperation.toFixed(2)}<br>
-                Aggression: ${entity.dna.aggression.toFixed(2)}<br>
-                ${entity instanceof ComplexEntity ? `Size: ${entity.size}` : ''}
-            `;
-        }
-    }
-
-    function hideTooltip() {
-        const tooltip = document.getElementById('tooltip');
-        if (tooltip) {
-            tooltip.style.display = 'none';
-        }
-    }
-
-    function createTooltip() {
-        const tooltip = document.createElement('div');
-        tooltip.id = 'tooltip';
-        tooltip.style.position = 'absolute';
-        tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-        tooltip.style.color = 'white';
-        tooltip.style.padding = '5px';
-        tooltip.style.borderRadius = '5px';
-        tooltip.style.fontSize = '12px';
-        tooltip.style.zIndex = '1000';
-        document.body.appendChild(tooltip);
-        return tooltip;
-    }
-
-    document.addEventListener('DOMContentLoaded', initThemeSelector);
-   
-    window.addEventListener('resize', () => {
-    const isMobile = window.innerWidth <= 768;
-    const sidePanel = document.querySelector('.side-panel');
-    
-    requestAnimationFrame(() => {
-        if (isMobile) {
-            Object.assign(sidePanel.style, {
-                position: 'fixed',
-                right: '10px',
-                bottom: '10px',
-                top: 'auto'
-            });
-        } else {
-            Object.assign(sidePanel.style, {
-                position: 'relative',
-                right: '0',
-                top: '0',
-                bottom: '0'
-            });
-        }
-        updatePanelVisibility();
+        window.addEventListener('resize', () => {
+        const isMobile = window.innerWidth <= 768;
+        const sidePanel = document.querySelector('.side-panel');
+        
+        requestAnimationFrame(() => {
+            if (isMobile) {
+                Object.assign(sidePanel.style, {
+                    position: 'fixed',
+                    right: '10px',
+                    bottom: '10px',
+                    top: 'auto'
+                });
+            } else {
+                Object.assign(sidePanel.style, {
+                    position: 'relative',
+                    right: '0',
+                    top: '0',
+                    bottom: '0'
+                });
+            }
+            updatePanelVisibility();
+        });
     });
-});
 
-    resizeCanvas();
-    initThemeSelector();
-    initGrid();
+        resizeCanvas();
+        initThemeSelector();
+        initGrid();
 </script>
 
 </body>
