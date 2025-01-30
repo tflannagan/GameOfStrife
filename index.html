@@ -1040,6 +1040,7 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(offscreenCanvas, 0, 0);
 }
+        
         function gameLoop(timestamp) {
             if (!lastUpdateTime) lastUpdateTime = timestamp;
             const elapsed = timestamp - lastUpdateTime;
@@ -1114,6 +1115,233 @@
         const sidePanel = document.querySelector('.side-panel');
 
 
+        function saveGameState() {
+            const gameState = {
+                grid: grid.map(row => 
+                    row.map(cell => {
+                        if (!cell) return null;
+                        
+                        if (cell instanceof DeadMatter) {
+                            return {
+                                type: 'DeadMatter',
+                                x: cell.x,
+                                y: cell.y,
+                                energy: cell.energy,
+                                decompositionStage: cell.decompositionStage,
+                                color: cell.color
+                            };
+                        }
+                        
+                        if (cell instanceof ComplexEntity) {
+                            return {
+                                type: 'ComplexEntity',
+                                x: cell.x,
+                                y: cell.y,
+                                energy: cell.energy,
+                                age: cell.age,
+                                dna: cell.dna,
+                                color: cell.color,
+                                name: cell.name,
+                                lastInteraction: cell.lastInteraction,
+                                size: cell.size,
+                                subEntities: cell.subEntities.map(subEntity => ({
+                                    x: subEntity.x,
+                                    y: subEntity.y,
+                                    energy: subEntity.energy,
+                                    age: subEntity.age,
+                                    dna: subEntity.dna,
+                                    color: subEntity.color,
+                                    name: subEntity.name,
+                                    lastInteraction: subEntity.lastInteraction
+                                }))
+                            };
+                        }
+                        
+                        return {
+                            type: 'Entity',
+                            x: cell.x,
+                            y: cell.y,
+                            energy: cell.energy,
+                            age: cell.age,
+                            dna: cell.dna,
+                            color: cell.color,
+                            name: cell.name,
+                            lastInteraction: cell.lastInteraction
+                        };
+                    })
+                ),
+                entities: Array.from(entities.entries()).map(([key, entity]) => [key, {
+                    type: entity.constructor.name,
+                    data: entity instanceof ComplexEntity ? {
+                        x: entity.x,
+                        y: entity.y,
+                        energy: entity.energy,
+                        age: entity.age,
+                        dna: entity.dna,
+                        color: entity.color,
+                        name: entity.name,
+                        lastInteraction: entity.lastInteraction,
+                        size: entity.size,
+                        subEntities: entity.subEntities.map(subEntity => ({
+                            x: subEntity.x,
+                            y: subEntity.y,
+                            energy: subEntity.energy,
+                            age: subEntity.age,
+                            dna: subEntity.dna,
+                            color: subEntity.color,
+                            name: subEntity.name,
+                            lastInteraction: subEntity.lastInteraction
+                        }))
+                    } : {
+                        x: entity.x,
+                        y: entity.y,
+                        energy: entity.energy,
+                        age: entity.age,
+                        dna: entity.dna,
+                        color: entity.color,
+                        name: entity.name,
+                        lastInteraction: entity.lastInteraction,
+                        decompositionStage: entity instanceof DeadMatter ? entity.decompositionStage : undefined
+                    }
+                }]),
+                generation: generation,
+                isRunning: isRunning,
+                currentTheme: currentTheme,
+                speedControlValue: speedControl.value,
+                ROWS: ROWS,
+                COLS: COLS
+            };
+            
+            localStorage.setItem('gameState', JSON.stringify(gameState));
+        }
+
+        function loadGameState() {
+            const savedState = localStorage.getItem('gameState');
+            if (!savedState) return false;
+            
+            const gameState = JSON.parse(savedState);
+            
+            ROWS = gameState.ROWS;
+            COLS = gameState.COLS;
+            
+            grid = gameState.grid.map(row =>
+                row.map(cell => {
+                    if (!cell) return null;
+                    
+                    if (cell.type === 'DeadMatter') {
+                        const deadMatter = new DeadMatter(cell.x, cell.y, cell.energy);
+                        deadMatter.decompositionStage = cell.decompositionStage;
+                        deadMatter.color = cell.color;
+                        return deadMatter;
+                    }
+                    
+                    if (cell.type === 'ComplexEntity') {
+                        const subEntities = cell.subEntities.map(subEntity => {
+                            const entity = new Entity(subEntity.x, subEntity.y, subEntity.dna);
+                            entity.energy = subEntity.energy;
+                            entity.age = subEntity.age;
+                            entity.color = subEntity.color;
+                            entity.name = subEntity.name;
+                            entity.lastInteraction = subEntity.lastInteraction;
+                            return entity;
+                        });
+                        
+                        const complexEntity = new ComplexEntity(subEntities);
+                        complexEntity.x = cell.x;
+                        complexEntity.y = cell.y;
+                        complexEntity.energy = cell.energy;
+                        complexEntity.age = cell.age;
+                        complexEntity.dna = cell.dna;
+                        complexEntity.color = cell.color;
+                        complexEntity.name = cell.name;
+                        complexEntity.lastInteraction = cell.lastInteraction;
+                        complexEntity.size = cell.size;
+                        return complexEntity;
+                    }
+                    
+                    const entity = new Entity(cell.x, cell.y, cell.dna);
+                    entity.energy = cell.energy;
+                    entity.age = cell.age;
+                    entity.color = cell.color;
+                    entity.name = cell.name;
+                    entity.lastInteraction = cell.lastInteraction;
+                    return entity;
+                })
+            );
+            
+            entities = new Map(gameState.entities.map(([key, entityData]) => {
+                let entity;
+                if (entityData.type === 'ComplexEntity') {
+                    const subEntities = entityData.data.subEntities.map(subEntity => {
+                        const entity = new Entity(subEntity.x, subEntity.y, subEntity.dna);
+                        entity.energy = subEntity.energy;
+                        entity.age = subEntity.age;
+                        entity.color = subEntity.color;
+                        entity.name = subEntity.name;
+                        entity.lastInteraction = subEntity.lastInteraction;
+                        return entity;
+                    });
+                    entity = new ComplexEntity(subEntities);
+                    entity.size = entityData.data.size;
+                } else if (entityData.type === 'DeadMatter') {
+                    entity = new DeadMatter(entityData.data.x, entityData.data.y, entityData.data.energy);
+                    entity.decompositionStage = entityData.data.decompositionStage;
+                } else {
+                    entity = new Entity(entityData.data.x, entityData.data.y, entityData.data.dna);
+                }
+                
+                entity.x = entityData.data.x;
+                entity.y = entityData.data.y;
+                entity.energy = entityData.data.energy;
+                entity.age = entityData.data.age;
+                entity.color = entityData.data.color;
+                entity.name = entityData.data.name;
+                entity.lastInteraction = entityData.data.lastInteraction;
+                
+                return [key, entity];
+            }));
+            
+            generation = gameState.generation;
+            currentTheme = gameState.currentTheme;
+            speedControl.value = gameState.speedControlValue;
+            updateInterval = 100 - speedControl.value;
+            
+            if (gameState.isRunning) {
+                isRunning = true;
+                requestAnimationFrame(gameLoop);
+            }
+            
+            updateStats();
+            updateEntityList();
+            updateSelectedTheme();
+            drawGrid();
+            
+            return true;
+        }
+
+        function clearSavedState() {
+            localStorage.removeItem('gameState');
+        }
+
+        const autoSaveInterval = setInterval(saveGameState, 5000);
+
+        window.addEventListener('beforeunload', saveGameState);
+
+        resetBtn.addEventListener('click', () => {
+            resetBtn.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                resetBtn.style.transform = 'scale(1)';
+            }, 100);
+            clearSavedState();
+            initGrid();
+        });
+
+        window.addEventListener('load', () => {
+            if (!loadGameState()) {
+                initGrid();
+            }
+        });
+
         window.addEventListener('resize', () => {
             const isMobile = window.innerWidth <= 768;
             if (isMobile) {
@@ -1153,14 +1381,6 @@
                 lastUpdateTime = 0;
                 requestAnimationFrame(gameLoop);
             }
-        });
-
-        resetBtn.addEventListener('click', () => {
-            resetBtn.style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                resetBtn.style.transform = 'scale(1)';
-            }, 100);
-            initGrid();
         });
             
         speedControl.addEventListener('input', () => {
